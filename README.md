@@ -33,13 +33,13 @@ The cost of building the wrong thing is 10x the cost of a 30-second review. `no`
 ## Install
 
 ```bash
-npx no-cli
+npx nah-cli
 ```
 
 Or install globally:
 
 ```bash
-npm install -g no-cli
+npm install -g nah-cli
 ```
 
 Requires an Anthropic API key:
