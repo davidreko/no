@@ -1,5 +1,5 @@
 {
-  "name": "no-cli",
+  "name": "nah-cli",
   "version": "0.1.0",
   "description": "The AI coding agent that pushes back - a CLI tool with a built-in judge that reviews plans before execution",
   "type": "module",
