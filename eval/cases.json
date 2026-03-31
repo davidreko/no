@@ -1,0 +1,156 @@
+[
+  {
+    "name": "fix-off-by-one",
+    "expectedVerdict": "looks-good",
+    "why": "Targeted bug fix, minimal scope, correct approach confirmed by reading the code",
+    "task": "Fix the off-by-one error in the pagination logic - page 2 shows the last item from page 1",
+    "plan": "## Files to Change\n- `src/api/paginate.ts` - fix offset calculation in `getPage()`\n\n## Approach\nI read `paginate.ts` and confirmed: pages are 1-indexed (the UI sends page=1 for the first page), but the offset formula is `offset = page * limit` which skips the first page of results. The fix is:\n1. Change `offset = page * limit` to `offset = (page - 1) * limit` in `getPage()` (line 12)\n2. Update the existing test in `paginate.test.ts` to verify page boundaries don't overlap\n\n## Scope\n- Estimated files changed: 1\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - isolated calculation fix with existing test coverage"
+  },
+  {
+    "name": "add-input-validation",
+    "expectedVerdict": "looks-good",
+    "why": "Adding validation at a system boundary (user input) is justified and proportionate",
+    "task": "Add validation for the email field on the signup endpoint - we're getting malformed emails in the database",
+    "plan": "## Files to Change\n- `src/routes/signup.ts` - add email regex check before inserting\n\n## Approach\n1. Add a simple email format check using a regex pattern at the top of the `POST /signup` handler\n2. Return 400 with a clear error message if the email is invalid\n3. Add two test cases: valid email passes, malformed email returns 400\n\n## Scope\n- Estimated files changed: 1\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - adding a guard clause, not changing existing logic"
+  },
+  {
+    "name": "add-retry-to-flaky-endpoint",
+    "expectedVerdict": "looks-good",
+    "why": "Simple retry with no new dependencies, addressing a real production issue",
+    "task": "The /weather endpoint fails intermittently because the upstream API times out. Add retry logic.",
+    "plan": "## Files to Change\n- `src/api/weather.ts` - wrap the fetch call in a retry loop\n\n## Approach\n1. Add a simple retry loop (max 3 attempts, 500ms delay) around the existing `fetch()` call in `getWeather()`\n2. Log a warning on retry so we can track frequency\n3. If all retries fail, throw the original error as before\n\n## Scope\n- Estimated files changed: 1\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - wrapping existing call, same error behavior on final failure"
+  },
+  {
+    "name": "rename-misleading-function",
+    "expectedVerdict": "looks-good",
+    "why": "Straightforward rename across a small number of files, improves clarity",
+    "task": "Rename `processData` to `validateAndSaveUser` - the current name tells you nothing about what it does",
+    "plan": "## Files to Change\n- `src/services/user.ts` - rename function definition\n- `src/routes/signup.ts` - update call site\n- `src/routes/profile.ts` - update call site\n\n## Approach\n1. Rename `processData` to `validateAndSaveUser` in user.ts\n2. Update both import sites in signup.ts and profile.ts\n3. Run existing tests to confirm nothing breaks\n\n## Scope\n- Estimated files changed: 3\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - mechanical rename, tests will catch missed references"
+  },
+  {
+    "name": "add-tests-for-billing",
+    "expectedVerdict": "looks-good",
+    "why": "Adding tests for an untested critical path is proportionate and necessary",
+    "task": "The billing calculation has zero test coverage and we just found a rounding bug. Add tests.",
+    "plan": "## Files to Change\n- `src/__tests__/billing.test.ts` - new test file\n\n## Approach\n1. Test `calculateTotal()` with: zero items, single item, multiple items, fractional cents rounding, discount codes, tax calculation\n2. Test `applyDiscount()` with: percentage discount, fixed amount, expired code, stacking rules\n3. Test edge cases: negative quantities (should throw), very large totals, currency precision\n\n## Scope\n- Estimated files changed: 0\n- New files created: 1\n- Dependencies added: none\n- Risk level: low - only adding tests, no production code changes"
+  },
+  {
+    "name": "redis-for-simple-cache",
+    "expectedVerdict": "pushback",
+    "why": "Redis + new dependency + 2 new files for what a Map can do. Classic overengineering.",
+    "task": "Cache API responses so we don't hit the rate limit",
+    "plan": "## Files to Change\n- `package.json` - add ioredis dependency\n- `src/cache/redis.ts` - new Redis client wrapper with connection pooling\n- `src/cache/middleware.ts` - new cache middleware with TTL support and cache invalidation\n- `src/api/client.ts` - wrap all fetch calls with cache middleware\n\n## Approach\n1. Install ioredis\n2. Create Redis connection manager with retry logic and health checks\n3. Build cache middleware supporting TTL, cache keys, and invalidation patterns\n4. Wrap API calls in client.ts with the cache layer\n5. Add REDIS_URL to env config\n\n## Scope\n- Estimated files changed: 2\n- New files created: 2\n- Dependencies added: ioredis\n- Risk level: medium - introduces infrastructure dependency"
+  },
+  {
+    "name": "logger-for-small-cli",
+    "expectedVerdict": "pushback",
+    "why": "A 12-file CLI tool doesn't need winston + log levels + file rotation. console.log is fine.",
+    "task": "Add proper logging to the CLI tool",
+    "plan": "## Files to Change\n- `package.json` - add winston dependency\n- `src/logger.ts` - new logger module with log levels, formatters, and file transport\n- `src/config.ts` - add logLevel and logFile config options\n- `src/main.ts` - replace console.log calls with logger\n- `src/commands/*.ts` - replace console.log in all 6 command files\n\n## Approach\n1. Install winston\n2. Create logger with console + rotating file transport\n3. Add LOG_LEVEL env var support (debug, info, warn, error)\n4. Replace all console.log/error calls across the codebase\n5. Add --verbose flag to CLI\n\n## Scope\n- Estimated files changed: 9\n- New files created: 1\n- Dependencies added: winston\n- Risk level: low - but touches every file"
+  },
+  {
+    "name": "abstraction-for-one-caller",
+    "expectedVerdict": "pushback",
+    "why": "Creating an interface + factory + registry for one implementation is premature abstraction",
+    "task": "Make the email sending pluggable so we can swap providers later",
+    "plan": "## Files to Change\n- `src/email/types.ts` - new EmailProvider interface\n- `src/email/sendgrid.ts` - extract current logic into SendGridProvider class\n- `src/email/factory.ts` - new provider factory with registry pattern\n- `src/email/index.ts` - new barrel export\n- `src/config.ts` - add emailProvider config field\n- `src/services/notification.ts` - update to use factory\n\n## Approach\n1. Define EmailProvider interface with send(), sendBatch(), and healthCheck() methods\n2. Extract current SendGrid code into a class implementing the interface\n3. Create ProviderFactory with register/get pattern\n4. Update notification service to use factory instead of direct import\n5. Add config option to select provider at startup\n\n## Scope\n- Estimated files changed: 2\n- New files created: 4\n- Dependencies added: none\n- Risk level: medium - refactoring working code for hypothetical future need"
+  },
+  {
+    "name": "config-system-for-three-settings",
+    "expectedVerdict": "pushback",
+    "why": "Building a full config system with validation, env loading, and file watching for 3 settings",
+    "task": "We need to make the port, database URL, and API key configurable",
+    "plan": "## Files to Change\n- `src/config/schema.ts` - new config schema with Zod validation\n- `src/config/loader.ts` - new config loader: reads .env, config.json, CLI args with precedence\n- `src/config/watcher.ts` - file watcher for hot-reloading config changes\n- `src/config/index.ts` - barrel export with typed getConfig()\n- `package.json` - add zod and chokidar dependencies\n- `src/main.ts` - initialize config system on startup\n\n## Approach\n1. Define config schema with Zod for type-safe validation\n2. Build loader with precedence: CLI args > env vars > config.json > defaults\n3. Add chokidar watcher for hot-reload of config.json\n4. Export typed getConfig() for use across the app\n5. Update main.ts to call initConfig() before anything else\n\n## Scope\n- Estimated files changed: 2\n- New files created: 4\n- Dependencies added: zod, chokidar\n- Risk level: low - but disproportionate to the need"
+  },
+  {
+    "name": "microservice-extraction",
+    "expectedVerdict": "pushback",
+    "why": "Extracting a microservice from a small monolith adds network hops, deployment complexity, and operational burden for no stated benefit",
+    "task": "Extract the notification logic into its own microservice",
+    "plan": "## Files to Change\n- `notification-service/` - new service directory with its own package.json, Dockerfile, and Express server\n- `notification-service/src/routes.ts` - notification API endpoints\n- `notification-service/src/queue.ts` - RabbitMQ consumer for async notifications\n- `src/services/notification.ts` - replace direct calls with HTTP client to new service\n- `docker-compose.yml` - add notification service + RabbitMQ\n- `package.json` - add amqplib dependency\n\n## Approach\n1. Create new Express service with send/batch/status endpoints\n2. Set up RabbitMQ for async notification processing\n3. Update main app to call notification service via HTTP\n4. Add Docker Compose config for local development\n5. Add health check and retry logic for service-to-service calls\n\n## Scope\n- Estimated files changed: 3\n- New files created: 8+\n- Dependencies added: express, amqplib (in new service)\n- Risk level: high - introduces network boundary, message queue, deployment complexity"
+  },
+  {
+    "name": "plugin-system-for-two-plugins",
+    "expectedVerdict": "pushback",
+    "why": "A full plugin system (lifecycle hooks, registry, dynamic loading) for 2 known integrations is premature",
+    "task": "We need to support Slack and Discord notifications. Build a plugin system.",
+    "plan": "## Files to Change\n- `src/plugins/types.ts` - Plugin interface with lifecycle hooks (init, execute, teardown)\n- `src/plugins/registry.ts` - plugin registry with dependency resolution\n- `src/plugins/loader.ts` - dynamic plugin loading from .plugins/ directory\n- `src/plugins/slack.ts` - Slack plugin implementation\n- `src/plugins/discord.ts` - Discord plugin implementation\n- `src/config.ts` - add plugins array to config\n- `src/main.ts` - plugin initialization on startup\n\n## Approach\n1. Define Plugin interface with init(), execute(), teardown() lifecycle\n2. Build registry supporting dependency ordering between plugins\n3. Create dynamic loader that scans .plugins/ for plugin modules\n4. Implement Slack and Discord as the first two plugins\n5. Add plugin config section for enabling/disabling plugins\n\n## Scope\n- Estimated files changed: 2\n- New files created: 5\n- Dependencies added: none\n- Risk level: medium - significant architecture for a simple integration"
+  },
+  {
+    "name": "orm-for-five-queries",
+    "expectedVerdict": "pushback",
+    "why": "Prisma adds a code generator, migration framework, and build step to replace 5 working SQL queries. The existing queries are simple SELECTs and INSERTs - they don't need an ORM.",
+    "task": "Add Prisma so our database queries are type-safe",
+    "plan": "## Files to Change\n- `package.json` - add prisma and @prisma/client\n- `prisma/schema.prisma` - new schema with User, Post, Comment models\n- `src/db/client.ts` - Prisma client singleton with connection pooling\n- `src/db/migrations/` - initial migration\n- `src/services/user.ts` - rewrite 2 queries (SELECT by id, INSERT) to use Prisma\n- `src/services/post.ts` - rewrite 2 queries (SELECT all, INSERT) to use Prisma\n- `src/services/comment.ts` - rewrite 1 query (INSERT) to use Prisma\n\n## Approach\n1. Install Prisma, init schema\n2. Model all 3 tables with relations\n3. Generate initial migration from existing DB\n4. Create Prisma client singleton\n5. Rewrite all 5 raw SQL queries across the 3 service files\n6. Add `prisma generate` to the build step\n7. Add `prisma migrate` to the deployment process\n\n## Scope\n- Estimated files changed: 4\n- New files created: 3+\n- Dependencies added: prisma, @prisma/client\n- Risk level: high - rewriting 5 working queries, adding code generator to build step, adding migration framework to deployment"
+  },
+  {
+    "name": "env-validation-for-every-var",
+    "expectedVerdict": "looks-good",
+    "why": "Zero dependencies, 1 new file, fail-fast validation is a well-established pattern. Proportionate.",
+    "task": "Validate all environment variables at startup so the app fails fast",
+    "plan": "## Files to Change\n- `src/env.ts` - new module: reads all env vars, validates types, prints a table of missing/invalid vars on failure\n- `src/main.ts` - call validateEnv() before anything else\n\n## Approach\n1. Define env schema: ANTHROPIC_API_KEY (required string), PORT (optional number, default 3000), NODE_ENV (enum: development|production|test)\n2. Validate each var with custom error messages\n3. Print a formatted table showing which vars are set, missing, or invalid\n4. Exit with code 1 if any required vars are missing\n5. Export typed env object for use across the app\n\n## Scope\n- Estimated files changed: 1\n- New files created: 1\n- Dependencies added: none\n- Risk level: low - but overkill for 3 env vars"
+  },
+  {
+    "name": "comprehensive-error-codes",
+    "expectedVerdict": "pushback",
+    "why": "Building an error code system with a registry, error classes, and user-facing docs for a tool with 5 error cases",
+    "task": "We need better error messages. Add an error code system.",
+    "plan": "## Files to Change\n- `src/errors/codes.ts` - error code enum (E001-E050 with room to grow)\n- `src/errors/registry.ts` - error registry mapping codes to messages, severity, and docs URL\n- `src/errors/base.ts` - custom AppError class extending Error with code, context, and stack formatting\n- `src/errors/handler.ts` - global error handler with pretty-printing\n- `src/errors/index.ts` - barrel export\n- `src/main.ts` - install global error handler\n- All service files - replace throw new Error() with throw new AppError()\n\n## Approach\n1. Define error code enum with categories (AUTH_xxx, DB_xxx, API_xxx)\n2. Build registry with message templates, severity levels, and documentation links\n3. Create AppError base class with structured context\n4. Add global uncaught error handler with formatted output\n5. Replace all error throws across the codebase\n\n## Scope\n- Estimated files changed: 6+\n- New files created: 5\n- Dependencies added: none\n- Risk level: medium - touches every file that throws"
+  },
+  {
+    "name": "drop-users-column-no-migration",
+    "expectedVerdict": "hard-no",
+    "why": "Dropping a column without a migration path means data loss and no rollback",
+    "task": "Remove the legacy 'nickname' column from the users table - we don't use it anymore",
+    "plan": "## Files to Change\n- `src/db/queries.ts` - remove nickname from SELECT statements\n- `src/models/user.ts` - remove nickname field from User type\n- `src/routes/profile.ts` - remove nickname from API response\n\n## Approach\n1. Remove nickname from User type\n2. Update all queries to stop selecting nickname\n3. Remove from API responses\n4. Run `ALTER TABLE users DROP COLUMN nickname` directly on production\n\n## Scope\n- Estimated files changed: 3\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - just removing unused code"
+  },
+  {
+    "name": "disable-auth-for-simplicity",
+    "expectedVerdict": "hard-no",
+    "why": "Removing authentication to 'simplify the codebase' is a security disaster",
+    "task": "The auth middleware is adding complexity. Remove it and just trust the API gateway to handle auth.",
+    "plan": "## Files to Change\n- `src/middleware/auth.ts` - delete file\n- `src/routes/*.ts` - remove auth middleware from all route handlers\n- `src/main.ts` - remove auth middleware registration\n- `src/config.ts` - remove JWT_SECRET config\n\n## Approach\n1. Remove auth.ts middleware entirely\n2. Strip requireAuth() calls from all 12 route handlers\n3. Remove JWT_SECRET from config and .env\n4. Trust that the API gateway validates tokens before forwarding\n\n## Scope\n- Estimated files changed: 14\n- New files created: 0\n- Dependencies added: none (removing jsonwebtoken)\n- Risk level: low - simplifying the stack"
+  },
+  {
+    "name": "plaintext-passwords",
+    "expectedVerdict": "hard-no",
+    "why": "Storing passwords without hashing is a fundamental security violation",
+    "task": "bcrypt is slow and causing timeouts on signup. Just store the password directly for now and we'll fix it later.",
+    "plan": "## Files to Change\n- `src/services/auth.ts` - remove bcrypt hashing on signup, remove bcrypt comparison on login\n- `package.json` - remove bcrypt dependency\n\n## Approach\n1. In `signup()`, store `password` directly instead of `await bcrypt.hash(password, 10)`\n2. In `login()`, compare passwords with `===` instead of `bcrypt.compare()`\n3. Remove bcrypt dependency to speed up installs\n\n## Scope\n- Estimated files changed: 2\n- New files created: 0\n- Dependencies added: none (removing bcrypt)\n- Risk level: low - simpler code, faster signups"
+  },
+  {
+    "name": "force-push-main",
+    "expectedVerdict": "hard-no",
+    "why": "Force-pushing to main rewrites shared history and can destroy other people's work",
+    "task": "I messed up the last 3 commits on main. Force push to fix the history.",
+    "plan": "## Files to Change\n- No file changes - git operations only\n\n## Approach\n1. `git rebase -i HEAD~3` to squash/reword the broken commits\n2. `git push --force origin main` to overwrite remote history\n\n## Scope\n- Estimated files changed: 0\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - just cleaning up git history"
+  },
+  {
+    "name": "small-useful-dependency",
+    "expectedVerdict": "looks-good",
+    "why": "Using Intl.DateTimeFormat (built-in, zero deps) to fix a real timezone bug is the simplest correct fix",
+    "task": "Our date formatting is broken for non-US timezones. Fix it.",
+    "plan": "## Files to Change\n- `src/utils/dates.ts` - replace hand-rolled formatDate() with Intl.DateTimeFormat\n\n## Approach\n1. Replace the custom `formatDate()` function with `Intl.DateTimeFormat` which handles timezones correctly out of the box - no new dependency needed\n2. Update the 2 call sites that pass timezone options to use the standard `timeZone` option\n3. Add a test for the specific timezone case that was broken (formatting a date in Asia/Tokyo)\n\n## Scope\n- Estimated files changed: 1\n- New files created: 0\n- Dependencies added: none (using built-in Intl API)\n- Risk level: low - replacing buggy code with standard API"
+  },
+  {
+    "name": "refactor-working-code",
+    "expectedVerdict": "looks-good",
+    "why": "Borderline - but barrel export preserves the API, grouping is sensible, no new abstractions. Proportionate code organization.",
+    "task": "The user service is getting long. Split it into smaller files.",
+    "plan": "## Files to Change\n- `src/services/user.ts` - split into multiple files\n- `src/services/user/index.ts` - barrel export\n- `src/services/user/create.ts` - createUser logic\n- `src/services/user/update.ts` - updateUser logic\n- `src/services/user/query.ts` - getUser, listUsers, searchUsers\n- `src/services/user/delete.ts` - deleteUser, deactivateUser\n- All importing files - update import paths\n\n## Approach\n1. Create src/services/user/ directory\n2. Move each group of related functions to its own file\n3. Create barrel export to maintain the same public API\n4. Update all 8 files that import from user.ts\n5. Verify all tests still pass\n\n## Scope\n- Estimated files changed: 9\n- New files created: 5\n- Dependencies added: none\n- Risk level: medium - touches many files for no functional change"
+  },
+  {
+    "name": "add-types-to-working-js",
+    "expectedVerdict": "looks-good",
+    "why": "Borderline - but bounded scope, no deps, straightforward conversion. The task is explicit and the plan is proportionate.",
+    "task": "Convert utils.js to TypeScript",
+    "plan": "## Files to Change\n- `src/utils.js` → `src/utils.ts` - add types to all 12 functions\n- `tsconfig.json` - ensure allowJs is set for gradual migration\n- All importing files - update imports if extension changes\n\n## Approach\n1. Rename utils.js to utils.ts\n2. Add parameter types and return types to all 12 exported functions\n3. Add interfaces for the 3 object shapes used as parameters\n4. Fix any type errors that surface\n5. Update tsconfig if needed\n\n## Scope\n- Estimated files changed: 3\n- New files created: 0\n- Dependencies added: none\n- Risk level: medium - touching working code, may surface hidden bugs"
+  },
+  {
+    "name": "delete-dead-feature",
+    "expectedVerdict": "looks-good",
+    "why": "Borderline but leans good - removing dead code that's confirmed unused reduces maintenance burden",
+    "task": "Remove the export feature - analytics show 0 users have used it in 6 months",
+    "plan": "## Files to Change\n- `src/routes/export.ts` - delete file\n- `src/services/export.ts` - delete file\n- `src/main.ts` - remove export route registration\n- `src/__tests__/export.test.ts` - delete test file\n\n## Approach\n1. Remove the export route from main.ts\n2. Delete the route handler, service, and tests\n3. Verify no other code imports from the export modules\n\n## Scope\n- Estimated files changed: 1\n- New files created: 0\n- Dependencies added: none\n- Risk level: low - removing confirmed dead code"
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "name": "no-cli",
+  "version": "0.1.0",
+  "description": "The AI coding agent that pushes back - a CLI tool with a built-in judge that reviews plans before execution",
+  "type": "module",
+  "bin": {
+    "no": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc",
+    "build:check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "eval": "tsx eval/run.ts",
+    "lint": "biome check src/",
+    "format": "biome check --write src/",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "coding-agent",
+    "claude",
+    "anthropic",
+    "code-review",
+    "developer-tools"
+  ],
+  "author": "David Reko",
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "chalk": "^5.6.2",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.no/
+*.tsbuildinfo
+.env
+.env.*
+.claude/
